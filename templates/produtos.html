@@ -1,0 +1,39 @@
+{% extends 'base.html' %}
+
+{% block title %}
+Produtos
+    {% endblock %}
+
+{% block context %}
+<table class="table table-hover table-dark table-bordered">
+    <thead>
+      <tr>
+        <th scope="col">ID</th>
+        <th scope="col">Nome</th>
+        <th scope="col">Cod_barra</th>
+        <th scope="col">Preço</th>
+        <th scope="col">Descrição</th>
+        <th scope="col">dono</th>
+        <th scope="col">Ação</th>
+      </tr>
+      </thead>
+    <tbody>
+      {% for item in itens %}
+      <tr>
+        <td>{{item.id}}</td>
+        <td>{{item.nome}}</td>
+        <td>{{item.cod_barra}}</td>
+        <td>{{item.preco}}</td>
+        <td>{{item.descricao}}</td>
+        <td>{{item.dono}}</td>
+        <td>
+          <button class="btn btn-outline btn-info" style="background-color: blue; color:white;">Detalhes do Produto</button>
+          <button class="btn btn-outline btn-success" style="background-color: green; color:white;">Comprar Produto</button>
+        </td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  {% endblock %}
+
+  
