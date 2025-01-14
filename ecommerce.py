@@ -1,10 +1,12 @@
+
+
 from flask import Flask, render_template, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField,SubmitField
+from wtforms import StringField, PasswordField,SubmitField 
 from wtforms.validators import Length, EqualTo,Email, DataRequired, ValidationError
 from flask_bcrypt import Bcrypt
-from flask_login import LoginManager, login_user, UserMixin
+from flask_login import LoginManager, login_user, UserMixin, logout_user, login_required
 
 
 db = SQLAlchemy()
@@ -15,6 +17,9 @@ app.config["SECRET_KEY"]='4236e47e5ea65e2ba8918ba1'
 db = SQLAlchemy(app)
 bcrypt = Bcrypt(app)
 login_manager.init_app(app)
+login_manager.login_view="page_login"
+login_manager.login_message="por favor faça o login"
+login_manager.login_message_category="info"
 ##################################
 #CRIANDO MODELOS (TABELAS NO BANCO D.D)
 
@@ -28,9 +33,16 @@ class User(db.Model, UserMixin):
     usuario = db.Column(db.String(length=60),nullable=False, unique=True)
     email = db.Column(db.String(length=60), nullable=False)
     senha = db.Column(db.String(length=30),nullable=False, unique=True)
-    valor = db.Column(db.Integer, nullable=False, default=5000)
+    valor = db.Column(db.Integer, nullable=False, default=5000) 
     itens = db.relationship('Item',backref='dono_user', lazy=True)
-
+    
+    @property
+    def Formatavalor(self):
+      if len(str(self.valor)) >= 4:
+        return f"R$ {str(self.valor)[:-3]}, {str(self.valor)[-3:]}"
+      else:
+        return f"R$ {self.valor}"
+   
     @property
     def senhacrip(self):
         return self.senhacrip
@@ -38,7 +50,7 @@ class User(db.Model, UserMixin):
     @senhacrip.setter
     def senhacrip(self, password_text):
         self.senha = bcrypt.generate_password_hash(password_text).decode('utf-8')
-
+    
     def converte_senha(self,senha_texto_claro):
         return bcrypt.check_password_hash(self.senha,senha_texto_claro)
 
@@ -47,9 +59,9 @@ class Item(db.Model):
     nome = db.Column(db.String(length=60),nullable=False, unique=True)
     preco = db.Column(db.Integer, nullable=False)
     cod_barra = db.Column(db.String(length=60),nullable=False, unique=True)
-    descricao = db.Column(db.String(length=60),nullable=False, unique=False)
+    descricao = db.Column(db.String(length=60),nullable=False, unique=False)  
     dono = db.Column(db.Integer, db.ForeignKey('user.id'))
-##################################
+################################## 
 #CRIANDO CLASSE DO FLASK-FORM
 # construindo logica de validação de dados
 # fazendo validação se usuario,emal,senha já existem
@@ -59,16 +71,16 @@ class CadastroForm(FlaskForm):
         user = User.query.filter_by(usuario=check_user.data).first()
         if user:
             raise ValidationError("nome de usuário já existe, tente outro nome de usuário")
-
+    
     def validate_email(self, check_email):
         email = User.query.filter_by(email=check_email.data).first()
         if email:
             raise ValidationError("email já cadastrado, cadastre outro email")
-
+            
     def validate_senha(self, check_senha):
         senha = User.query.filter_by(senha=check_senha.data).first()
         if senha:
-            raise ValidationError("senha já existe, por favor cadastre outra senha")
+            raise ValidationError("senha já existe, por favor cadastre outra senha")             
 
 
     usuario = StringField(label="username : ", validators=[Length(min=2,max=30),DataRequired()])
@@ -93,6 +105,7 @@ def home():
 #recuperando dados de uma tabela
 #OBSERVAÇÃO(produtos.html é uma table html.)
 @app.route("/produtos")
+@login_required
 def page_produtos():
     itens = Item.query.all()
     return render_template("produtos.html",itens=itens)
@@ -100,7 +113,7 @@ def page_produtos():
 #criando rota do formulario de cadastro
 #fazendo a validação dos dados
 #e salvando no banco de dados
-#e ja em seguida direcionando o usuario para
+#e ja em seguida direcionando o usuario para 
 # a page_produtos
 @app.route("/cadastro", methods=["GET","POST"])
 
@@ -128,18 +141,21 @@ def page_login():
         if usuario_logado and usuario_logado.converte_senha(senha_texto_claro=form.senha.data):
             login_user(usuario_logado)
             flash(f"login realizado com sucesso! Olá  {usuario_logado.usuario}",category="success")
-            return redirect(url_for("page_produtos"))
+            return redirect(url_for("page_produtos"))      
         else:
             flash(f"senha ou email inválido", category="danger")
     return render_template("login.html",form=form)
-
-
-
-
-##################################
+  
+@app.route("/logout")
+def page_logout():
+  logout_user()
+  flash(f"até logo", category="info")
+  return redirect(url_for("home"))
+  
+    
+##################################   
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
     app.run(debug=True)
-
 
